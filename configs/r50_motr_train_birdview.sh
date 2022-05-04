@@ -10,7 +10,7 @@
 
 PRETRAIN=r50_deformable_detr_plus_iterative_bbox_refinement-checkpoint.pth
 EXP_DIR=exps/birdview
-python  \
+python \
      main.py \
     --meta_arch motr \
     --dataset_file birdview \
@@ -35,4 +35,5 @@ python  \
     --mot_path ./datasets/data_path \
     --data_txt_path_train ./datasets/data_path/birdview3.train \
     --data_txt_path_val ./datasets/data_path/birdview.val \
+    --resume ${EXP_DIR}/checkpoint.pth \
     --num_workers 0

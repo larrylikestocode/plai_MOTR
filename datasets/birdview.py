@@ -115,10 +115,10 @@ class Birdview:
                 raise Exception("Sorry, no numbers below zero")
                 # print(xyxy.shape) # 27,4
             labels = xyxy.copy()
-            labels[:, 2] = labels[:, 2] + 256.
-            labels[:, 3] = labels[:, 3] + 256.
-            labels[:, 4] = labels[:, 4] + 256.
-            labels[:, 5] = labels[:, 5] + 256.
+            labels[:, 2] = labels[:, 2] # [+ 256. # switch from image center to 0,0`
+            labels[:, 3] = labels[:, 3] # + 256.
+            labels[:, 4] = labels[:, 4] # + 256.
+            labels[:, 5] = labels[:, 5] # + 256.
             """
             output the min max edge of the bb
             """
@@ -146,7 +146,8 @@ class Birdview:
         for label in labels:
             targets['boxes'].append(label[2:6].tolist())
             # targets['area'].append(label[4] * label[5])
-            targets['area'].append(label[4] * label[5])
+
+            targets['area'].append(np.abs(label[4]-label[2]) * np.abs(label[5]-label[3]))
             targets['iscrowd'].append(0)
             targets['labels'].append(0)
             obj_id = label[1] + obj_idx_offset if label[1] >= 0 else label[1]
