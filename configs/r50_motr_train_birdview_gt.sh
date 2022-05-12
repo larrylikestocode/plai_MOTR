@@ -7,10 +7,9 @@
 
 
 # for MOT17
-
 PRETRAIN=r50_deformable_detr_plus_iterative_bbox_refinement-checkpoint.pth
-EXP_DIR=mlexps/birdview
-python  \
+EXP_DIR=mlexps/birdview_gt
+python \
      main.py \
     --meta_arch motr \
     --dataset_file birdview \
@@ -33,9 +32,9 @@ python  \
     --query_interaction_layer 'QIM' \
     --extra_track_attn \
     --mot_path ./datasets/data_path \
-    --data_txt_path_train ./datasets/data_path/birdview3.train \
-    --data_txt_path_val ./datasets/data_path/birdview3.val \
+    --data_txt_path_train ./datasets/data_path/birdviewgt.train \
+    --data_txt_path_val ./datasets/data_path/birdviewgt.val \
     --num_workers 0 \
     --output_dir ${EXP_DIR}/ \
-    --birdview_type itra \
+    --birdview_type gt \
     --save_period 5
