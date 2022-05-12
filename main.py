@@ -27,9 +27,9 @@ from util.tool import load_model
 import util.misc as utils
 import datasets.samplers as samplers
 from datasets import build_dataset, get_coco_api_from_dataset
-from engine import evaluate, train_one_epoch, train_one_epoch_mot
+from engine import evaluate, train_one_epoch, train_one_epoch_mot, evaluate_mot
 from models import build_model
-
+from torch.utils.tensorboard import SummaryWriter
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Deformable DETR Detector', add_help=False)
@@ -175,6 +175,7 @@ def get_args_parser():
     parser.add_argument('--memory_bank_len', type=int, default=4)
     parser.add_argument('--memory_bank_type', type=str, default=None)
     parser.add_argument('--memory_bank_with_self_attn', action='store_true', default=False)
+    parser.add_argument('--birdview_type', type=str, default='test')
 
     parser.add_argument('--use_checkpoint', action='store_true', default=False)
     return parser
@@ -205,6 +206,8 @@ def main(args):
 
     dataset_train = build_dataset(image_set='train', args=args)
     dataset_val = build_dataset(image_set='val', args=args)
+
+    writer = SummaryWriter(log_dir='runs/{}'.format(args.birdview_type))
 
     if args.distributed:
         if args.cache_mode:
@@ -329,6 +332,10 @@ def main(args):
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             sampler_train.set_epoch(epoch)
+        '''
+        # val_stats = evaluate_mot(
+        #     model, criterion, data_loader_val, device, epoch)
+        '''
         train_stats = train_func(
             model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm)
         lr_scheduler.step()
@@ -345,11 +352,13 @@ def main(args):
                     'epoch': epoch,
                     'args': args,
                 }, checkpoint_path)
-        
+        '''
         if args.dataset_file not in ['e2e_mot', 'e2e_dance', 'mot', 'ori_mot', 'e2e_static_mot', 'e2e_joint',  'birdview']:
             test_stats, coco_evaluator = evaluate(
                 model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
             )
+            # print(train_stats.keys())
+            # print(test_stats.keys())
 
             log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                          **{f'test_{k}': v for k, v in test_stats.items()},
@@ -370,12 +379,22 @@ def main(args):
                         for name in filenames:
                             torch.save(coco_evaluator.coco_eval["bbox"].eval,
                                        output_dir / "eval" / name)
+        '''
         if args.dataset_file in ['e2e_mot', 'e2e_dance', 'mot', 'ori_mot', 'e2e_static_mot', 'e2e_joint', 'birdview']:
+            if epoch%1 ==0:
+                val_stats = evaluate_mot(
+                    model, criterion, data_loader_val, device, epoch)
+                writer.add_scalar("Loss/val", train_stats['loss'], epoch)
+
             dataset_train.step_epoch()
             dataset_val.step_epoch()
+
+        writer.add_scalar("Loss/train", train_stats['loss'], epoch)
+
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
+    writer.flush()
 
 
 if __name__ == '__main__':

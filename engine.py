@@ -40,7 +40,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     metric_logger.add_meter('class_error', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
     metric_logger.add_meter('grad_norm', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
     header = 'Epoch: [{}]'.format(epoch)
-    print_freq = 10
+    print_freq = 200
 
     prefetcher = data_prefetcher(data_loader, device, prefetch=True)
     samples, targets = prefetcher.next()
@@ -98,7 +98,7 @@ def train_one_epoch_mot(model: torch.nn.Module, criterion: torch.nn.Module,
     # metric_logger.add_meter('class_error', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
     metric_logger.add_meter('grad_norm', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
     header = 'Epoch: [{}]'.format(epoch)
-    print_freq = 10
+    print_freq = 200
 
     # for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
     for data_dict in metric_logger.log_every(data_loader, print_freq, header):
@@ -144,6 +144,52 @@ def train_one_epoch_mot(model: torch.nn.Module, criterion: torch.nn.Module,
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+
+
+@torch.no_grad()
+def evaluate_mot(model: torch.nn.Module, criterion: torch.nn.Module,
+                    data_loader: Iterable,
+                    device: torch.device, epoch: int):
+    # model.eval()
+    criterion.eval()
+
+    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger.add_meter('class_error', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
+    header = 'Test epoch: [{}]'.format(epoch)
+    print_freq = 200
+
+    # for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
+    for data_dict in metric_logger.log_every(data_loader, print_freq, header):
+        data_dict = data_dict_to_cuda(data_dict, device)
+        outputs = model(data_dict)
+
+        loss_dict = criterion(outputs, data_dict)
+        # print("iter {} after model".format(cnt-1))
+        weight_dict = criterion.weight_dict
+        losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
+
+        # reduce losses over all GPUs for logging purposes
+        loss_dict_reduced = utils.reduce_dict(loss_dict)
+        # loss_dict_reduced_unscaled = {f'{k}_unscaled': v
+        #                               for k, v in loss_dict_reduced.items()}
+        loss_dict_reduced_scaled = {k: v * weight_dict[k]
+                                    for k, v in loss_dict_reduced.items() if k in weight_dict}
+        losses_reduced_scaled = sum(loss_dict_reduced_scaled.values())
+
+        loss_value = losses_reduced_scaled.item()
+
+        metric_logger.update(loss=loss_value, **loss_dict_reduced_scaled)
+
+    metric_logger.synchronize_between_processes()
+    print("Test averaged stats:", metric_logger)
+
+    ret_dict = {}
+    for k, meter in metric_logger.meters.items():
+        try:
+            ret_dict[k] = meter.global_avg
+        except:
+            continue
+    return ret_dict
 
 
 @torch.no_grad()

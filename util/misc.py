@@ -216,9 +216,13 @@ class MetricLogger(object):
     def __str__(self):
         loss_str = []
         for name, meter in self.meters.items():
-            loss_str.append(
-                "{}: {}".format(name, str(meter))
-            )
+            try:
+                loss_str.append(
+                    "{}: {}".format(name, str(meter))
+                )
+            except:
+                # print(name)
+                continue
         return self.delimiter.join(loss_str)
 
     def synchronize_between_processes(self):
@@ -468,7 +472,9 @@ def init_distributed_mode(args):
         args.distributed = False
         return
 
-    args.distributed = True
+
+    args.distributed = False
+    return 
 
     torch.cuda.set_device(args.gpu)
     args.dist_backend = 'nccl'
