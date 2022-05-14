@@ -384,7 +384,7 @@ def main(args):
             if epoch%1 ==0:
                 val_stats = evaluate_mot(
                     model, criterion, data_loader_val, device, epoch)
-                writer.add_scalar("Loss/val", train_stats['loss'], epoch)
+                writer.add_scalar("Loss/val", val_stats['loss'], epoch)
 
             dataset_train.step_epoch()
             dataset_val.step_epoch()
