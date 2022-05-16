@@ -233,7 +233,7 @@ def make_detmot_transforms(image_set, args=None):
 
         return T.MotCompose(color_transforms + scale_transforms)
 
-    if image_set == 'val':
+    if image_set == 'val' or image_set == 'test' :
         return T.MotCompose([
             normalize,
         ])
@@ -250,5 +250,8 @@ def build(image_set, args):
         dataset = Birdview(args, data_txt_path=data_txt_path, seqs_folder=root, transforms=transforms)
     if image_set == 'val':
         data_txt_path = args.data_txt_path_val
+        dataset = Birdview(args, data_txt_path=data_txt_path, seqs_folder=root, transforms=transforms)
+    if image_set == 'test':
+        data_txt_path = args.data_txt_path_test
         dataset = Birdview(args, data_txt_path=data_txt_path, seqs_folder=root, transforms=transforms)
     return dataset

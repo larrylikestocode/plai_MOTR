@@ -140,7 +140,7 @@ def train_one_epoch_mot(model: torch.nn.Module, criterion: torch.nn.Module,
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         metric_logger.update(grad_norm=grad_total_norm)
         # gather the stats from all processes
-
+        # break
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
@@ -149,19 +149,19 @@ def train_one_epoch_mot(model: torch.nn.Module, criterion: torch.nn.Module,
 @torch.no_grad()
 def evaluate_mot(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable,
-                    device: torch.device, epoch: int):
-    # model.eval()
+                    device: torch.device, epoch: int, eval_type='val'):
+    model.eval()
     criterion.eval()
 
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter('class_error', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
-    header = 'Test epoch: [{}]'.format(epoch)
+    header = 'Test {} epoch: [{}]'.format(epoch, eval_type)
     print_freq = 200
 
     # for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
     for data_dict in metric_logger.log_every(data_loader, print_freq, header):
         data_dict = data_dict_to_cuda(data_dict, device)
-        outputs = model(data_dict)
+        outputs = model(data_dict, is_val=True)
 
         loss_dict = criterion(outputs, data_dict)
         # print("iter {} after model".format(cnt-1))
@@ -179,6 +179,7 @@ def evaluate_mot(model: torch.nn.Module, criterion: torch.nn.Module,
         loss_value = losses_reduced_scaled.item()
 
         metric_logger.update(loss=loss_value, **loss_dict_reduced_scaled)
+        # break
 
     metric_logger.synchronize_between_processes()
     print("Test averaged stats:", metric_logger)

@@ -542,7 +542,7 @@ class MOTR(nn.Module):
         out['hs'] = hs[-1]
         return out
     
-    def _post_process_single_image(self, frame_res, track_instances, is_last):
+    def _post_process_single_image(self, frame_res, track_instances, is_last, is_val=False):
         with torch.no_grad():
             if self.training:
                 track_scores = frame_res['pred_logits'][0, :].sigmoid().max(dim=-1).values
@@ -553,7 +553,7 @@ class MOTR(nn.Module):
         track_instances.pred_logits = frame_res['pred_logits'][0]
         track_instances.pred_boxes = frame_res['pred_boxes'][0]
         track_instances.output_embedding = frame_res['hs'][0]
-        if self.training:
+        if self.training or is_val:
             # the track id will be assigned by the mather.
             frame_res['track_instances'] = track_instances
             track_instances = self.criterion.match_for_single_frame(frame_res)
@@ -597,8 +597,9 @@ class MOTR(nn.Module):
             ret['ref_pts'] = ref_pts
         return ret
 
-    def forward(self, data: dict):
-        if self.training:
+    def forward(self, data: dict, is_val=False):
+        # print(is_val)
+        if self.training or is_val:
             self.criterion.initialize_for_single_clip(data['gt_instances'])
         frames = data['imgs']  # list of Tensor.
         outputs = {
@@ -641,13 +642,15 @@ class MOTR(nn.Module):
             else:
                 frame = nested_tensor_from_tensor_list([frame])
                 frame_res = self._forward_single_image(frame, track_instances)
-            frame_res = self._post_process_single_image(frame_res, track_instances, is_last)
+            frame_res = self._post_process_single_image(frame_res, track_instances, is_last, is_val)
 
             track_instances = frame_res['track_instances']
             outputs['pred_logits'].append(frame_res['pred_logits'])
             outputs['pred_boxes'].append(frame_res['pred_boxes'])
 
-        if not self.training:
+        if is_val:
+            outputs['losses_dict'] = self.criterion.losses_dict
+        elif not self.training:
             outputs['track_instances'] = track_instances
         else:
             outputs['losses_dict'] = self.criterion.losses_dict

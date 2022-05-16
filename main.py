@@ -157,6 +157,9 @@ def get_args_parser():
     parser.add_argument('--data_txt_path_val',
                         default='./datasets/data_path/detmot17.train', type=str,
                         help="path to dataset txt split")
+    parser.add_argument('--data_txt_path_test',
+                        default='./datasets/data_path/detmot17.train', type=str,
+                        help="path to dataset txt split")
     parser.add_argument('--img_path', default='data/valid/JPEGImages/')
 
     parser.add_argument('--query_interaction_layer', default='QIM', type=str,
@@ -178,6 +181,7 @@ def get_args_parser():
     parser.add_argument('--birdview_type', type=str, default='test')
 
     parser.add_argument('--use_checkpoint', action='store_true', default=False)
+    parser.add_argument('--summerywritter_path',type=str, default='runs/')
     return parser
 
 
@@ -206,8 +210,9 @@ def main(args):
 
     dataset_train = build_dataset(image_set='train', args=args)
     dataset_val = build_dataset(image_set='val', args=args)
+    dataset_test = build_dataset(image_set='test', args=args)
 
-    writer = SummaryWriter(log_dir='runs/{}'.format(args.birdview_type))
+    writer = SummaryWriter(log_dir='{}{}'.format(args.summerywritter_path,args.birdview_type))
 
     if args.distributed:
         if args.cache_mode:
@@ -219,6 +224,7 @@ def main(args):
     else:
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
         sampler_val = torch.utils.data.SequentialSampler(dataset_val)
+        sampler_test = torch.utils.data.SequentialSampler(dataset_test)
 
     batch_sampler_train = torch.utils.data.BatchSampler(
         sampler_train, args.batch_size, drop_last=True)
@@ -232,6 +238,10 @@ def main(args):
     data_loader_val = DataLoader(dataset_val, args.batch_size, sampler=sampler_val,
                                  drop_last=False, collate_fn=collate_fn, num_workers=args.num_workers,
                                  pin_memory=True)
+    data_loader_test = DataLoader(dataset_test, args.batch_size, sampler=sampler_test,
+                                 drop_last=False, collate_fn=collate_fn, num_workers=args.num_workers,
+                                 pin_memory=True)
+
 
     def match_name_keywords(n, name_keywords):
         out = False
@@ -332,10 +342,10 @@ def main(args):
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             sampler_train.set_epoch(epoch)
-        '''
+
         # val_stats = evaluate_mot(
         #     model, criterion, data_loader_val, device, epoch)
-        '''
+
         train_stats = train_func(
             model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm)
         lr_scheduler.step()
@@ -383,11 +393,16 @@ def main(args):
         if args.dataset_file in ['e2e_mot', 'e2e_dance', 'mot', 'ori_mot', 'e2e_static_mot', 'e2e_joint', 'birdview']:
             if epoch%1 ==0:
                 val_stats = evaluate_mot(
-                    model, criterion, data_loader_val, device, epoch)
+                    model, criterion, data_loader_val, device, epoch, eval_type='val')
                 writer.add_scalar("Loss/val", val_stats['loss'], epoch)
+
+                test_stats = evaluate_mot(
+                    model, criterion, data_loader_test, device, epoch, eval_type='interpret')
+                writer.add_scalar("Loss/test", test_stats['loss'], epoch)
 
             dataset_train.step_epoch()
             dataset_val.step_epoch()
+            dataset_test.step_epoch()
 
         writer.add_scalar("Loss/train", train_stats['loss'], epoch)
 
