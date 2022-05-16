@@ -40,4 +40,4 @@ python  \
     --output_dir ${EXP_DIR}/ \
     --birdview_type itra \
     --save_period 5 \
-    --summerywritter_path runs16/ \
+    --summerywritter_path runs16/
