@@ -6,11 +6,12 @@
 # ------------------------------------------------------------------------
 
 
-# 1 EXP_DIR 2 lr 3 lr_backbone
-# for
+# for MOT17
+
 PRETRAIN=r50_deformable_detr_plus_iterative_bbox_refinement-checkpoint.pth
+#EXP_DIR=mlexps16/birdview
 EXP_DIR=$1
-python \
+python  \
      main.py \
     --meta_arch motr \
     --dataset_file birdview \
@@ -33,13 +34,11 @@ python \
     --query_interaction_layer 'QIM' \
     --extra_track_attn \
     --mot_path ./datasets/data_path/dist/ \
-    --data_txt_path_train ./datasets/data_path/dist/birdview_gt.train \
-    --data_txt_path_val ./datasets/data_path/dist/birdview_gt.val \
+    --data_txt_path_train ./datasets/data_path/dist/birdview_interpret.train \
+    --data_txt_path_val ./datasets/data_path/dist/birdview_interpret.val \
     --data_txt_path_test ./datasets/data_path/dist/birdview_interpret.test \
     --num_workers 0 \
     --output_dir ${EXP_DIR}/ \
-    --birdview_type gt \
+    --birdview_type itra \
     --save_period 5 \
-    --use_wandb 1
-#    --summerywritter_path runs16/
-
+    --use_wandb 1 \

@@ -30,6 +30,7 @@ from datasets import build_dataset, get_coco_api_from_dataset
 from engine import evaluate, train_one_epoch, train_one_epoch_mot, evaluate_mot
 from models import build_model
 from torch.utils.tensorboard import SummaryWriter
+import wandb
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Deformable DETR Detector', add_help=False)
@@ -181,6 +182,7 @@ def get_args_parser():
     parser.add_argument('--birdview_type', type=str, default='test')
 
     parser.add_argument('--use_checkpoint', action='store_true', default=False)
+    parser.add_argument('--use_wandb', type=bool, default=False)
     parser.add_argument('--summerywritter_path',type=str, default='runs/')
     return parser
 
@@ -189,11 +191,22 @@ def main(args):
     utils.init_distributed_mode(args)
     print("git:\n  {}\n".format(utils.get_sha()))
 
+    if args.use_wandb:
+        wandb.init(
+            project='Behavioral_tracking', entity="iai",
+            group=None)
+    else:
+        writer = SummaryWriter(log_dir='{}{}'.format(args.summerywritter_path, args.birdview_type))
+
     if args.frozen_weights is not None:
         assert args.masks, "Frozen training is meant for segmentation only"
     print(args)
 
     device = torch.device(args.device)
+
+    wandb.config.lr = args.lr
+    wandb.config.lr_backbone = args.lr_backbone
+    wandb.config.epochs = args.epochs
 
     # fix the seed for reproducibility
     seed = args.seed + utils.get_rank()
@@ -212,7 +225,7 @@ def main(args):
     dataset_val = build_dataset(image_set='val', args=args)
     dataset_test = build_dataset(image_set='test', args=args)
 
-    writer = SummaryWriter(log_dir='{}{}'.format(args.summerywritter_path,args.birdview_type))
+
 
     if args.distributed:
         if args.cache_mode:
@@ -394,22 +407,30 @@ def main(args):
             if epoch%1 ==0:
                 val_stats = evaluate_mot(
                     model, criterion, data_loader_val, device, epoch, eval_type='val')
-                writer.add_scalar("Loss/val", val_stats['loss'], epoch)
+
 
                 test_stats = evaluate_mot(
                     model, criterion, data_loader_test, device, epoch, eval_type='interpret')
-                writer.add_scalar("Loss/test", test_stats['loss'], epoch)
+
+                if args.use_wandb:
+                    wandb.log({'loss_val': val_stats['loss'], 'loss_test': test_stats['loss'], 'epoch': epoch})
+                else:
+                    writer.add_scalar("Loss/val", val_stats['loss'], epoch)
+                    writer.add_scalar("Loss/test", test_stats['loss'], epoch)
 
             dataset_train.step_epoch()
             dataset_val.step_epoch()
             dataset_test.step_epoch()
-
-        writer.add_scalar("Loss/train", train_stats['loss'], epoch)
+        if args.use_wandb:
+            wandb.log({'loss_train': train_stats['loss'], 'epoch': epoch})
+        else:
+            writer.add_scalar("Loss/train", train_stats['loss'], epoch)
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-    writer.flush()
+    if not args.use_wandb:
+        writer.flush()
 
 
 if __name__ == '__main__':

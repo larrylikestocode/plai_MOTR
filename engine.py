@@ -28,7 +28,7 @@ from util.plot_utils import draw_boxes, draw_ref_pts, image_hwc2chw
 from datasets.coco_eval import CocoEvaluator
 from datasets.panoptic_eval import PanopticEvaluator
 from datasets.data_prefetcher import data_prefetcher, data_dict_to_cuda
-
+import wandb
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
@@ -120,6 +120,7 @@ def train_one_epoch_mot(model: torch.nn.Module, criterion: torch.nn.Module,
         losses_reduced_scaled = sum(loss_dict_reduced_scaled.values())
 
         loss_value = losses_reduced_scaled.item()
+        wandb.log({"{}_step_loss".format('training'): loss_value})
 
         if not math.isfinite(loss_value):
             print("Loss is {}, stopping training".format(loss_value))
@@ -177,7 +178,7 @@ def evaluate_mot(model: torch.nn.Module, criterion: torch.nn.Module,
         losses_reduced_scaled = sum(loss_dict_reduced_scaled.values())
 
         loss_value = losses_reduced_scaled.item()
-
+        wandb.log({"{}_step_loss".format(eval_type): loss_value})
         metric_logger.update(loss=loss_value, **loss_dict_reduced_scaled)
         # break
 

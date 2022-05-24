@@ -9,7 +9,8 @@
 # for MOT17
 
 PRETRAIN=r50_deformable_detr_plus_iterative_bbox_refinement-checkpoint.pth
-EXP_DIR=mlexps16/birdview
+#EXP_DIR=mlexps16/birdview
+EXP_DIR=$1
 python  \
      main.py \
     --meta_arch motr \
@@ -17,8 +18,8 @@ python  \
     --epoch 200 \
     --with_box_refine \
     --lr_drop 100 \
-    --lr 2e-6 \
-    --lr_backbone 2e-6 \
+    --lr $2 \
+    --lr_backbone $3 \
     --output_dir ${EXP_DIR} \
     --batch_size 1 \
     --sample_mode 'random_interval' \
@@ -32,12 +33,12 @@ python  \
     --fp_ratio 0.3 \
     --query_interaction_layer 'QIM' \
     --extra_track_attn \
-    --mot_path ./datasets/data_path \
-    --data_txt_path_train ./datasets/data_path/birdview3.train \
-    --data_txt_path_val ./datasets/data_path/birdview3.val \
-    --data_txt_path_test ./datasets/data_path/birdviewgt.test \
+    --mot_path ./datasets/data_path/dist/ \
+    --data_txt_path_train ./datasets/data_path/dist/birdview_itra.train \
+    --data_txt_path_val ./datasets/data_path/dist/birdview_itra.val \
+    --data_txt_path_test ./datasets/data_path/dist/birdview_interpret.test \
     --num_workers 0 \
     --output_dir ${EXP_DIR}/ \
     --birdview_type itra \
     --save_period 5 \
-    --summerywritter_path runs16/
+    --use_wandb 1 \
