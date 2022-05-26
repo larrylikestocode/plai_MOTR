@@ -40,5 +40,5 @@ python  \
     --num_workers 0 \
     --output_dir ${EXP_DIR}/ \
     --birdview_type itra \
-    --save_period 5 \
+    --save_period 1 \
     --use_wandb 1 \

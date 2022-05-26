@@ -10,7 +10,7 @@
 # for
 PRETRAIN=r50_deformable_detr_plus_iterative_bbox_refinement-checkpoint.pth
 EXP_DIR=$1
-python \
+python  \
      main.py \
     --meta_arch motr \
     --dataset_file birdview \
@@ -39,7 +39,7 @@ python \
     --num_workers 0 \
     --output_dir ${EXP_DIR}/ \
     --birdview_type gt \
-    --save_period 5 \
+    --save_period 1 \
     --use_wandb 1
 #    --summerywritter_path runs16/
 
