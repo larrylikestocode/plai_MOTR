@@ -359,9 +359,7 @@ def main(args):
         # val_stats = evaluate_mot(
         #     model, criterion, data_loader_val, device, epoch)
 
-        train_stats = train_func(
-            model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm)
-        lr_scheduler.step()
+
         if args.output_dir:
             checkpoint_paths = [output_dir / 'checkpoint.pth']
             # extra checkpoint before LR drop and every 5 epochs
@@ -375,48 +373,29 @@ def main(args):
                     'epoch': epoch,
                     'args': args,
                 }, checkpoint_path)
-        '''
-        if args.dataset_file not in ['e2e_mot', 'e2e_dance', 'mot', 'ori_mot', 'e2e_static_mot', 'e2e_joint',  'birdview']:
-            test_stats, coco_evaluator = evaluate(
-                model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
-            )
-            # print(train_stats.keys())
-            # print(test_stats.keys())
 
-            log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                         **{f'test_{k}': v for k, v in test_stats.items()},
-                         'epoch': epoch,
-                         'n_parameters': n_parameters}
-
-            if args.output_dir and utils.is_main_process():
-                with (output_dir / "log.txt").open("a") as f:
-                    f.write(json.dumps(log_stats) + "\n")
-
-                # for evaluation logs
-                if coco_evaluator is not None:
-                    (output_dir / 'eval').mkdir(exist_ok=True)
-                    if "bbox" in coco_evaluator.coco_eval:
-                        filenames = ['latest.pth']
-                        if epoch % 50 == 0:
-                            filenames.append(f'{epoch:03}.pth')
-                        for name in filenames:
-                            torch.save(coco_evaluator.coco_eval["bbox"].eval,
-                                       output_dir / "eval" / name)
-        '''
         if args.dataset_file in ['e2e_mot', 'e2e_dance', 'mot', 'ori_mot', 'e2e_static_mot', 'e2e_joint', 'birdview']:
-            if epoch%1 ==0:
+            # if epoch%1 ==0:
+
+            if True:
+                test_stats = evaluate_mot(
+                    model, criterion, data_loader_test, device, epoch, eval_type='interpret')
+
                 val_stats = evaluate_mot(
                     model, criterion, data_loader_val, device, epoch, eval_type='val')
 
 
-                test_stats = evaluate_mot(
-                    model, criterion, data_loader_test, device, epoch, eval_type='interpret')
 
                 if args.use_wandb:
                     wandb.log({'loss_val': val_stats['loss'], 'loss_test': test_stats['loss'], 'epoch': epoch})
                 else:
                     writer.add_scalar("Loss/val", val_stats['loss'], epoch)
                     writer.add_scalar("Loss/test", test_stats['loss'], epoch)
+
+            train_stats = train_func(
+                model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm, chop=10)
+            lr_scheduler.step()
+
 
             dataset_train.step_epoch()
             dataset_val.step_epoch()

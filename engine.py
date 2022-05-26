@@ -90,7 +90,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
 def train_one_epoch_mot(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
-                    device: torch.device, epoch: int, max_norm: float = 0):
+                    device: torch.device, epoch: int, max_norm: float = 0, chop=1):
     model.train()
     criterion.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
@@ -98,8 +98,10 @@ def train_one_epoch_mot(model: torch.nn.Module, criterion: torch.nn.Module,
     # metric_logger.add_meter('class_error', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
     metric_logger.add_meter('grad_norm', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
     header = 'Epoch: [{}]'.format(epoch)
-    print_freq = 200
+    print_freq = 1000
+    max_update = len(data_loader)/chop
 
+    i = 0
     # for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
     for data_dict in metric_logger.log_every(data_loader, print_freq, header):
         data_dict = data_dict_to_cuda(data_dict, device)
@@ -120,8 +122,9 @@ def train_one_epoch_mot(model: torch.nn.Module, criterion: torch.nn.Module,
         losses_reduced_scaled = sum(loss_dict_reduced_scaled.values())
 
         loss_value = losses_reduced_scaled.item()
-        wandb.log({"{}_step_loss".format('training'): loss_value})
-
+        # wandb.log({"{}_step_loss".format('training'): loss_value })
+        wandb.log({"{}_step_loss".format('train'): loss_value})#, '{}_step'.format('train'):i })
+        i+=1
         if not math.isfinite(loss_value):
             print("Loss is {}, stopping training".format(loss_value))
             print(loss_dict_reduced)
@@ -141,7 +144,8 @@ def train_one_epoch_mot(model: torch.nn.Module, criterion: torch.nn.Module,
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         metric_logger.update(grad_norm=grad_total_norm)
         # gather the stats from all processes
-        # break
+        if i >max_update:
+            break
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
@@ -157,9 +161,10 @@ def evaluate_mot(model: torch.nn.Module, criterion: torch.nn.Module,
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter('class_error', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
     header = 'Test {} epoch: [{}]'.format(epoch, eval_type)
-    print_freq = 200
+    print_freq = 1000
 
     # for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
+    i = 0
     for data_dict in metric_logger.log_every(data_loader, print_freq, header):
         data_dict = data_dict_to_cuda(data_dict, device)
         outputs = model(data_dict, is_val=True)
@@ -178,9 +183,8 @@ def evaluate_mot(model: torch.nn.Module, criterion: torch.nn.Module,
         losses_reduced_scaled = sum(loss_dict_reduced_scaled.values())
 
         loss_value = losses_reduced_scaled.item()
-        wandb.log({"{}_step_loss".format(eval_type): loss_value})
+        # wandb.log({"{}_step_loss".format(eval_type): loss_value}) #, '{}_step'.format(eval_type):i })
         metric_logger.update(loss=loss_value, **loss_dict_reduced_scaled)
-        # break
 
     metric_logger.synchronize_between_processes()
     print("Test averaged stats:", metric_logger)
