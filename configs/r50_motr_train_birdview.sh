@@ -34,7 +34,7 @@ python  \
     --query_interaction_layer 'QIM' \
     --extra_track_attn \
     --mot_path ./datasets/data_path/dist/ \
-    --data_txt_path_train ./datasets/data_path/dist/birdview_itra.train \
+    --data_txt_path_train ./datasets/data_path/dist/birdview_small.train \
     --data_txt_path_val ./datasets/data_path/dist/birdview_itra.val \
     --data_txt_path_test ./datasets/data_path/dist/birdview_interpret.test \
     --num_workers 0 \
