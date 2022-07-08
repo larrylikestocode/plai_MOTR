@@ -176,16 +176,34 @@ class Birdview:
     def pre_continuous_frames(self, start, end, interval=1):
         targets = []
         images = []
+        indxs = []
         # print("start {} end {} interval {}".format(start, end, interval))
+        # start dominates the video name
+        videos = []
+        start_video = self.img_files[start].split('/')[-2]
         for i in range(start, end, interval):
-
-            # print(start)
-            # print(end)
-            # print(interval)
-            img_i, targets_i = self._pre_single_frame(i)
-            images.append(img_i)
-            targets.append(targets_i)
-        return images, targets
+            video = self.img_files[i].split('/')[-2]
+            if video != start_video:
+                # check the start video indx
+                if self.img_files[start+1].split('/')[-2] != start_video:
+                    img_i, targets_i = self._pre_single_frame(start)
+                    images.append(img_i)
+                    targets.append(targets_i)
+                    indxs.append(start)
+                    break
+                else:
+                    img_i, targets_i = self._pre_single_frame(start+1)
+                    images.append(img_i)
+                    targets.append(targets_i)
+                    indxs.append(start+1)
+                    break
+                # frame_num = int(self.img_files[0].split('/')[-1].split('.')[-2])
+            else:
+                img_i, targets_i = self._pre_single_frame(i)
+                images.append(img_i)
+                targets.append(targets_i)
+                indxs.append(i)
+        return images, targets, indxs
 
     def __getitem__(self, idx):
         ### 30 20gt+10pred
@@ -193,7 +211,10 @@ class Birdview:
 
         # print(sample_start)
 
-        images, targets = self.pre_continuous_frames(sample_start, sample_end, sample_interval)
+        images, targets, indxs = self.pre_continuous_frames(sample_start, sample_end, sample_interval)
+        # print(self.img_files[indxs[0]])
+        # print(self.img_files[indxs[1]])
+        # print("------------------------------------")
         data = {}
         if self._transforms is not None:
             images, targets = self._transforms(images, targets)
